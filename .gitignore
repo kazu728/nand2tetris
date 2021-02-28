@@ -1,0 +1,6 @@
+tools
+*.tst
+*.out
+*.cmp
+*.hack
+todo.md
