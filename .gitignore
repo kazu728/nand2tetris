@@ -4,3 +4,4 @@ tools
 *.cmp
 *.hack
 todo.md
+06/**/*.asm
