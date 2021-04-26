@@ -1,37 +1,39 @@
-import { DestDict, CompDict, JumpDict } from "./Dict.ts";
+import { DestDictValue, CompDictValue, JumpDictValue, Dict } from "./Dict.d.ts";
 
 /**
- * destニーモニックのバイナリコードを返す
+ * 渡されたdictとニーモニックに対応する機械語を返す
+ * @param dict
  * @param mnemonic
  * @returns
  */
-export function dest(mnemonic: keyof typeof DestDict): DestDict {
-  return DestDict[mnemonic];
-}
-
-/**
- * compニーモニックのバイナリコードを返す
- * @param mnemonic
- * @returns
- */
-export function comp(mnemonic: keyof typeof CompDict): CompDict {
-  return CompDict[mnemonic];
-}
-
-/**
- * jumpニーモニックのバイナリコードを返す
- * @param mnemonic
- * @returns
- */
-export function jump(mnemonic: keyof typeof JumpDict): JumpDict {
-  return JumpDict[mnemonic];
+export function getBinByMnemonic<T extends Dict>(
+  dict: T,
+  mnemonic: keyof T
+): T[keyof T] {
+  return dict[mnemonic];
 }
 
 /**
  * A_COMMANDのバイナリコードを返す
- * @param bin
+ * @param address
  */
-export function createACommandBin(bin: string): string {
+export function makeACommandBin(address: number): string {
   const aCommandPrefix = 0;
-  return `${aCommandPrefix}${Number(bin).toString(2).padStart(15, "0")}\r`;
+  return `${aCommandPrefix}${address.toString(2).padStart(15, "0")}`;
+}
+
+/**
+ * C_COMMANDのバイナリ コードを返す
+ * @param compBin
+ * @param destBin
+ * @param jumpBin
+ * @returns
+ */
+export function makeCCommandBin(
+  compBin: CompDictValue,
+  destBin: DestDictValue,
+  jumpBin: JumpDictValue
+): string {
+  const cCommandPrefix = "111";
+  return `${cCommandPrefix}${compBin}${destBin}${jumpBin}`;
 }

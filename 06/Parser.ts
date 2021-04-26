@@ -1,17 +1,20 @@
-import { DestDict, CompDict, JumpDict } from "./Dict.ts";
+import { Mnemonic } from "./Dict.d.ts";
+import { symbolTable } from "./SymbolTable.ts";
 
 export type Command = "A_COMMAND" | "C_COMMAND" | "L_COMMAND";
 
-// e.g. "@abc" match "abc"
-const symbolDeclarePattern = new RegExp("(?<=\\@).*$");
-// e.g. (abc) match "abc"
-const enclosedParenthesesPattern = new RegExp("(?<=[(（]).*?(?=[)）])");
-// e.g. D;JEQ match "D"
-const beforeSemicolonPattern = new RegExp("(.*)(?=;)");
+// e.g. "@abc" or "(abc)" match "abc"
+const symbolDeclarePattern = new RegExp("(?<=\\@).*$|(?<=[(（]).*?(?=[)）])");
 // e.g. D;JEQ match "JEQ"
-const afterSemicolonPattern = new RegExp("(?<=;).*$");
+export const afterSemicolonPattern = new RegExp("(?<=;).*$");
 // e.g. D=M+1 match "M+1"
-const afterEqualPattern = new RegExp("(?<=\\=).*$");
+export const afterEqualPattern = new RegExp("(?<=\\=).*$|(.*)(?=;)");
+// e.g. D=M+1 match "D"
+export const destMatchPattern = new RegExp("^\\w+");
+
+// NOTE: Initial memory address is 16
+// When undeclared valiable is used, memory is added
+let memoryAddress = 16;
 
 export class Parser {
   #file: string[];
@@ -26,11 +29,11 @@ export class Parser {
    * @returns
    */
   hasMoreCommands = (): boolean => {
-    console.log("Exists executable command?", this.#file[this.line]);
-    // FIXME
-    if (!Boolean(this.#file[this.line]) && this.#file[this.line + 1])
-      return true;
-    return Boolean(this.#file[this.line]);
+    const currentCommand = this.#file[this.line];
+
+    if (!Boolean(currentCommand) && this.#file[this.line + 1]) return true;
+
+    return Boolean(currentCommand);
   };
 
   /**
@@ -39,78 +42,93 @@ export class Parser {
   advance = (): string => this.#file[this.line];
 
   /**
-   * 現コマンドの種類を返す
+   * 渡されたコマンドの種類を返す
    * @returns
    */
-  commandType(currentCommand: string): Command | undefined {
-    console.log(currentCommand);
-
-    if (currentCommand.startsWith("@")) return "A_COMMAND";
-    // TODO: fix
-    if (
-      currentCommand.startsWith("D") ||
-      currentCommand.startsWith("M") ||
-      currentCommand.startsWith("0")
-    )
+  commandType(command: string): Command | undefined {
+    if (command.startsWith("@")) return "A_COMMAND";
+    if (["D", "M", "A", "0"].find((_) => command.startsWith(_)))
       return "C_COMMAND";
-    if (currentCommand.startsWith("(")) return "L_COMMAND";
 
-    return;
+    if (command.startsWith("(")) return "L_COMMAND";
   }
 
   /**
    * 現コマンド @Xxx または(Xxx)のXxxを返す
    * @returns
    */
-  symbol(command: string): string {
-    const symbol =
-      command.match(symbolDeclarePattern) ||
-      command.match(enclosedParenthesesPattern);
+  getSymboledAddress(command: string): number {
+    const matchedLiteral = this.getSymbolMatchedLiteral(command);
 
-    if (!symbol) {
+    if (Number.isFinite(Number(matchedLiteral))) return Number(matchedLiteral);
+
+    return this.resolveSymbol(matchedLiteral);
+  }
+
+  /**
+   * シンボルのアドレスを解決する
+   * @param matchedLiteral
+   * @returns
+   */
+  resolveSymbol(matchedLiteral: string): number {
+    const address = symbolTable.getAddress(matchedLiteral);
+
+    if (Number.isFinite(address)) return address;
+
+    symbolTable.addEntry(matchedLiteral, memoryAddress);
+    memoryAddress++;
+    return symbolTable.getAddress(matchedLiteral);
+  }
+
+  /**
+   * シンボルとアドレスの対応をテーブルに登録する
+   * @param command
+   * @returns
+   */
+  registerSymbol(command: string): void {
+    const literal = this.getSymbolMatchedLiteral(command);
+
+    if (Number.isFinite(literal) || symbolTable.contains(literal)) return;
+
+    const value = this.line - symbolTable.symboledCount;
+
+    console.log(`Add value to tabel Key: ${literal}, Value: ${value} `);
+
+    symbolTable.addEntry(literal, value);
+    symbolTable.symboledCount++;
+  }
+  /**
+   * シンボルの宣言にマッチした文字を返す
+   * @param command
+   * @returns
+   */
+  getSymbolMatchedLiteral(command: string): string {
+    const matched = command.match(symbolDeclarePattern);
+
+    if (!matched) {
       throw new Error(`Invalid command (neither @Xxx nor (xxx)): ${command}`);
     }
-
-    return symbol[0];
+    return matched[0];
   }
 
   /**
-   * 現C命令のdestニーモニックを返す
+   * 渡された命令を解析してニーモニックを返す
+   * @param command
+   * @param matchPattern
+   * @param notMatchPattern
    * @returns
    */
-  dest(command: string): keyof typeof DestDict {
-    // jump命令が含まれる場合destはnullで返す
-    if (command.match(beforeSemicolonPattern)) return "null";
+  getMnemonic<T extends Mnemonic>(
+    command: string,
+    matchPattern: RegExp,
+    notMatchPattern?: RegExp
+  ): T {
+    if (notMatchPattern) {
+      if (command.match(afterSemicolonPattern)) return "null" as T;
+    }
+    const matched = command.match(matchPattern);
+    if (matched) return matched[0] as T;
 
-    const matched = command.match(new RegExp("^\\w"));
-    if (!matched) return "null";
-
-    return matched[0] as keyof typeof DestDict;
-  }
-
-  /**
-   * 現C命令のcompニーモニックを返す
-   * @returns
-   */
-  comp(command: string): keyof typeof CompDict {
-    const matched = command.match(afterEqualPattern);
-
-    if (matched) return matched[0] as keyof typeof CompDict;
-
-    const jumpMatched = command.match(beforeSemicolonPattern);
-    if (jumpMatched) return jumpMatched[0] as keyof typeof CompDict;
-
-    throw new Error(`Invalid command: ${command}`);
-  }
-
-  /**
-   * 現C命令のjumpニーモニックを返す
-   * @returns
-   */
-  jump(command: string): keyof typeof JumpDict {
-    const matched = command.match(afterSemicolonPattern);
-    if (!matched) return "null";
-
-    return matched[0] as keyof typeof JumpDict;
+    return "null" as T;
   }
 }

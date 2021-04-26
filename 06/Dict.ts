@@ -1,5 +1,3 @@
-type DictValue<T extends {}> = T[keyof T];
-
 export const DestDict = {
   null: "000",
   M: "001",
@@ -52,7 +50,3 @@ export const JumpDict = {
   JLE: "110",
   JMP: "111",
 } as const;
-
-export type DestDict = DictValue<typeof DestDict>;
-export type CompDict = DictValue<typeof CompDict>;
-export type JumpDict = DictValue<typeof JumpDict>;
