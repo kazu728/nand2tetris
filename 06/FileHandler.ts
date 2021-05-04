@@ -20,13 +20,5 @@ export const getUserInputCommand = (): string[] => {
 export const writeToFile = (): void => {
   const hackFilePath: string = `${asmFile.replace(".asm", ".hack")}`;
 
-  Deno.readFileSync(hackFilePath) && Deno.removeSync(hackFilePath);
-
-  Deno.writeFileSync(
-    hackFilePath,
-    new TextEncoder().encode(buffer.join("\r")),
-    {
-      append: true,
-    }
-  );
+  Deno.writeFileSync(hackFilePath, new TextEncoder().encode(buffer.join("\r")));
 };
