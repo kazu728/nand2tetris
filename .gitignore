@@ -5,3 +5,5 @@ tools
 *.hack
 todo.md
 06/**/*.asm
+07/**/*.vm
+07/**/*.asm
