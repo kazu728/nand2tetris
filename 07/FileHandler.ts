@@ -1,13 +1,14 @@
 import { buffer } from "./VmTranslater.ts";
 
-const vmFile = Deno.args[0];
+const vmFilePath = Deno.args[0];
+export const vmFile = vmFilePath.split("/")[2];
 
 /**
  * vmファイルをパースして処理をIterableにする
  */
 export const getUserInputCommand = (): string[] => {
   return new TextDecoder("utf-8")
-    .decode(Deno.readFileSync(vmFile))
+    .decode(Deno.readFileSync(vmFilePath))
     .split("\n")
     .map((command) => command.replace("\r", "").trim());
 };
@@ -18,7 +19,7 @@ export const getUserInputCommand = (): string[] => {
  * @returns
  */
 export const writeToFile = (): void => {
-  const vmFilePath: string = `${vmFile.replace(".vm", ".asm")}`;
+  const asmFilePath: string = `${vmFilePath.replace(".vm", ".asm")}`;
 
-  Deno.writeFileSync(vmFilePath, new TextEncoder().encode(buffer.join("\r")));
+  Deno.writeFileSync(asmFilePath, new TextEncoder().encode(buffer.join("\r")));
 };

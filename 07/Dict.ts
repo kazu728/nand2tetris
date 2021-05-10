@@ -24,7 +24,7 @@ export type CommandType = typeof dict[keyof typeof dict];
 export const ArithmeticCalculation = {
   add: "D=D+M",
   sub: "D=M-D",
-  and: "D=D&M"  ,
+  and: "D=D&M",
   or: "D=D|M",
 } as const;
 export type ArithmeticCalculationKey = keyof typeof ArithmeticCalculation;
@@ -60,5 +60,21 @@ export type Segment =
   | "temp"
   | "constant"
   | "static";
+
+export const VirtualSegment = {
+  local: "LCL",
+  argument: "ARG",
+  this: "THIS",
+  that: "THAT",
+} as const;
+
+export type VirtualSegmentKey = keyof typeof VirtualSegment;
+
+export const StaticSegment = {
+  temp: 5,
+  pointer: 3,
+} as const;
+
+export type StaticSegmentKey = keyof typeof StaticSegment;
 
 export type PushOrPop = "push" | "pop";
